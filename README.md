@@ -40,7 +40,7 @@ windows-observability-lab/
 │   │   │   └── dashboards.yml
 │   │   │
 │   │   └── datasources/
-│   │       └── grafana-datasource.yml
+│   │       └── grafana-datasources.yml
 │   │
 │   ├── data/                     # Ignored by Git
 │   └── docker-compose.yml
