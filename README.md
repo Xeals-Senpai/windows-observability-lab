@@ -1,21 +1,14 @@
 # Windows Observability Lab
 
-A lightweight Windows monitoring stack built using Prometheus, Grafana, and Windows Exporter.
+A Docker-based observability lab for monitoring Windows systems using Prometheus, Windows Exporter, and Grafana.
 
-This project collects Windows system metrics and visualises them through custom Grafana dashboards. The stack is designed as a home-lab observability environment and demonstrates monitoring, metrics collection, dashboard creation, and basic infrastructure management using Docker.
+The project demonstrates infrastructure monitoring, configuration-as-code, Grafana provisioning, Prometheus configuration management, and reproducible deployments through Git.
+
+Designed as a learning and portfolio project for DevOps, Platform Engineering, Infrastructure, and Cloud Engineering roles.
 
 ---
 
-## Overview
-
-The monitoring stack consists of:
-
-- Grafana
-- Prometheus
-- Windows Exporter
-- Docker Desktop
-
-## Architecture:
+## Architecture
 
 ```text
 Windows Host
@@ -23,216 +16,39 @@ Windows Host
 ├─ Windows Exporter (9182)
 │
 └─ Docker Desktop
-    ├─ Prometheus (9090)
-    └─ Grafana (3000)
-```
-
-## Components
-
-### Grafana
-
-Responsible for:
-
-- Dashboard visualisation
-- Querying Prometheus
-- Displaying system health metrics
-- Alerting (future enhancement)
-
-Container:
-
-```yaml
-image: grafana/grafana:latest
-port: 3000
-```
-
-### Prometheus
-
-Responsible for:
-
-- Scraping metrics
-- Storing time-series data
-- Providing metrics to Grafana
-
-Container:
-
-```yaml
-image: prom/prometheus:latest
-port: 9090
-```
-
-### Windows Exporter
-
-Responsible for exposing Windows performance counters to Prometheus.
-
-Exporter Port:
-
-```text
-9182
+   │
+   ├─ Prometheus (9090)
+   │    └─ Scrapes Windows Exporter
+   │
+   └─ Grafana (3000)
+        └─ Uses Prometheus datasource
 ```
 
 ---
 
-## Grafana Datasource
-
-### Prometheus
-
-| Setting | Value |
-|----------|----------|
-| Name | Prometheus |
-| Type | Prometheus |
-| URL | http://host.docker.internal:9090 |
-| Access | Server |
-
----
-
-## Prometheus Configuration
-
-Scrape target:
-
-```yaml
-scrape_configs:
-  - job_name: windows
-    static_configs:
-      - targets:
-          - host.docker.internal:9182
-```
-
----
-
-## Dashboard Metrics
-
-### System Overview
-
-| Metric | Description |
-|----------|----------|
-| Uptime | System uptime |
-| Processors | Logical processor count |
-| RAM | Installed physical memory |
-| CPU Usage | Overall CPU utilisation |
-| Memory Usage | Physical memory utilisation |
-| Disk Usage | Drive usage percentage |
-| Bandwidth | Network throughput |
-
----
-
-## Memory Metrics
-
-### Total RAM
-
-```promql
-windows_memory_physical_total_bytes
-```
-
-### Available RAM
-
-```promql
-windows_memory_available_bytes
-```
-
-### Used RAM
-
-```promql
-windows_memory_physical_total_bytes - windows_memory_available_bytes
-```
-
----
-
-## CPU Metrics
-
-### CPU Usage %
-
-```promql
-100 - (avg(rate(windows_cpu_time_total{mode="idle"}[5m])) * 100)
-```
-
----
-
-## Disk Metrics
-
-### Drive Usage %
-
-```promql
-100 - (
-  windows_logical_disk_free_bytes
-  /
-  windows_logical_disk_size_bytes
-) * 100
-```
-
-### Drive Filter
-
-Only display mounted drive letters:
-
-```promql
-volume=~"[A-Z]:"
-```
-
----
-
-## Network Metrics
-
-### Received Traffic
-
-```promql
-rate(windows_net_bytes_received_total[5m])
-```
-
-### Sent Traffic
-
-```promql
-rate(windows_net_bytes_sent_total[5m])
-```
-
----
-
-## Disk I/O Metrics
-
-### Read Throughput
-
-```promql
-rate(windows_logical_disk_read_bytes_total[5m])
-```
-
-### Write Throughput
-
-```promql
-rate(windows_logical_disk_write_bytes_total[5m])
-```
-
-### Disk Operations
-
-```promql
-rate(windows_logical_disk_reads_total[5m])
-```
-
-```promql
-rate(windows_logical_disk_writes_total[5m])
-```
-
----
-
-## Pagefile Activity
-
-### Swap/Pagefile Operations
-
-```promql
-rate(windows_memory_swap_page_operations_total[5m])
-```
-
----
-
-## Repository Structure
+## Project Structure
 
 ```text
 windows-observability-lab/
+│
 ├── grafana/
-│   ├── docker-compose.yml
-│   └── dashboards/
-│       └── windows-dashboard.json
+│   ├── dashboards/
+│   │   └── windows-dashboard.json
+│   │
+│   ├── provisioning/
+│   │   ├── dashboards/
+│   │   │   └── dashboards.yml
+│   │   │
+│   │   └── datasources/
+│   │       └── grafana-datasource.yml
+│   │
+│   ├── data/                     # Ignored by Git
+│   └── docker-compose.yml
 │
 ├── prometheus/
-│   ├── docker-compose.yml
-│   └── prometheus.yml
+│   ├── prometheus.yml
+│   ├── data/                     # Ignored by Git
+│   └── docker-compose.yml
 │
 ├── .gitignore
 └── README.md
@@ -240,12 +56,208 @@ windows-observability-lab/
 
 ---
 
+## Components
+
+### Prometheus
+
+Prometheus is responsible for collecting and storing metrics.
+
+Configured scrape targets:
+
+```yaml
+- prometheus
+- windows
+```
+
+Additional target labels:
+
+```yaml
+host: windows-host
+lab: desktoplab
+os: windows
+role: desktop
+```
+
+### Windows Exporter
+
+Windows Exporter provides operating system metrics to Prometheus, including:
+
+- CPU utilisation
+- Memory usage
+- Disk utilisation
+- Network activity
+- Running services
+- Process information
+- Operating system statistics
+
+### Grafana
+
+Grafana is used to visualise Prometheus metrics through dashboards.
+
+Both the datasource and dashboard are automatically provisioned during container startup.
+
+---
+
+## Grafana Provisioning
+
+### Datasource Provisioning
+
+Location:
+
+```text
+grafana/provisioning/datasources/grafana-datasource.yml
+```
+
+Automatically creates the Prometheus datasource when Grafana starts.
+
+### Dashboard Provisioning
+
+Location:
+
+```text
+grafana/provisioning/dashboards/dashboards.yml
+```
+
+Automatically imports:
+
+```text
+windows-dashboard.json
+```
+
+when Grafana starts.
+
+### Benefits
+
+- No manual datasource creation
+- No manual dashboard imports
+- Consistent deployments
+- Fully reproducible environment
+
+---
+
+## Deployment
+
+### Prerequisites
+
+- Docker Desktop
+- Windows Exporter
+
+### Clone Repository
+
+```bash
+git clone https://github.com/Xeals-Senpai/windows-observability-lab.git
+cd windows-observability-lab
+```
+
+### Start Prometheus
+
+```bash
+cd prometheus
+docker compose up -d
+```
+
+### Start Grafana
+
+```bash
+cd ../grafana
+docker compose up -d
+```
+
+---
+
+## Verification
+
+### Prometheus
+
+Open:
+
+```text
+http://localhost:9090
+```
+
+Targets page:
+
+```text
+http://localhost:9090/targets
+```
+
+Expected result:
+
+```text
+prometheus   UP
+windows      UP
+```
+
+### Grafana
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Expected result:
+
+- Prometheus datasource automatically configured
+- Windows dashboard automatically imported
+- Metrics visible without manual configuration
+
+---
+
+## Reproducibility
+
+The repository stores:
+
+- Prometheus configuration
+- Grafana datasource provisioning
+- Grafana dashboard provisioning
+- Dashboard JSON definitions
+
+Runtime data is excluded through `.gitignore`:
+
+```text
+grafana/data/
+prometheus/data/
+```
+
+This allows the monitoring stack to be recreated on a new machine using only:
+
+```bash
+git clone https://github.com/Xeals-Senpai/windows-observability-lab.git
+
+cd windows-observability-lab/prometheus
+docker compose up -d
+
+cd ../grafana
+docker compose up -d
+```
+
+---
+
+## Skills Demonstrated
+
+- Docker
+- Docker Compose
+- Prometheus
+- Windows Exporter
+- Grafana
+- Infrastructure as Code (IaC)
+- Monitoring and Observability
+- Configuration Management
+- Git and GitHub
+- Linux and Windows Administration
+- Reproducible Deployments
+
+---
+
 ## Future Improvements
 
-- Grafana Alerting
+Potential future enhancements include:
+
+- Linux server monitoring using Node Exporter
+- Additional Grafana dashboards
+- Alertmanager integration
 - Multi-host monitoring
-- Linux Node Exporter support
-- Docker container monitoring
-- Alert notifications (Discord / Email)
-- Long-term metric retention
-- Infrastructure as Code deployment
+- Centralised log collection
+- Container monitoring
+- Infrastructure automation with Terraform or Ansible
